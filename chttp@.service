@@ -1,0 +1,9 @@
+[Unit]
+Description=HTTP server made for PostgreSQL
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/bin/chttp
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
