@@ -2,73 +2,84 @@
 #include <stdlib.h>
 #include <search.h>
 #include <string.h>
+#include <strings.h>
 
 #include "option.h"
 
 void *options = NULL;
-int optionver;
+
+int currentver;
+
+struct option {
+	enum option_type type;
+	int ver;
+	const char * key;
+	char * value;
+	size_t vsize;
+	enum option_inout inout;
+};
 
 static void initoptions() __attribute__((constructor));
 static void initoptions()
 {
-	optionver = 0;
+	currentver = 0;
 
 	/* general options */
-	setoptionof("Cache-Control", "", general);
-	setoptionof("Connection", "", general);
-	setoptionof("Date", "", general);
-	setoptionof("Pragma", "", general);
-	setoptionof("Trailer", "", general);
-	setoptionof("Transfer-Encoding", "", general);
-	setoptionof("Upgrade", "", general);
-	setoptionof("Via", "", general);
-	setoptionof("Warning", "", general);
+	setoptionof("Cache-Control", "", general, dontcare);
+	setoptionof("Connection", "", general, dontcare);
+	setoptionof("Date", "", general, dontcare);
+	setoptionof("Pragma", "", general, dontcare);
+	setoptionof("Trailer", "", general, dontcare);
+	setoptionof("Transfer-Encoding", "", general, dontcare);
+	setoptionof("Upgrade", "", general, dontcare);
+	setoptionof("Via", "", general, dontcare);
+	setoptionof("Warning", "", general, dontcare);
 
-	/* entity options (allows extensions) */
-	setoptionof("Allow", "", entity);
-	setoptionof("Content-Encoding", "", entity);
-	setoptionof("Content-Language", "", entity);
-	setoptionof("Content-Length", "", entity);
-	setoptionof("Content-Location", "", entity);
-	setoptionof("Content-MD5", "", entity);
-	setoptionof("Content-Range", "", entity);
-	setoptionof("Content-Type", "", entity);
-	setoptionof("Expires", "", entity);
-	setoptionof("Last-Modified", "", entity);
+	/* entity options (allows extensions, dontcare) */
+	setoptionof("Allow", "", entity, dontcare);
+	setoptionof("Content-Encoding", "", entity, dontcare);
+	setoptionof("Content-Language", "", entity, dontcare);
+	setoptionof("Content-Length", "", entity, dontcare);
+	setoptionof("Content-Location", "", entity, dontcare);
+	setoptionof("Content-MD5", "", entity, dontcare);
+	setoptionof("Content-Range", "", entity, dontcare);
+	setoptionof("Content-Type", "", entity, dontcare);
+	setoptionof("Expires", "", entity, dontcare);
+	setoptionof("Last-Modified", "", entity, dontcare);
 
 	/* request options */
-	setoptionof("Accept", "", request);
-	setoptionof("Accept-Charset", "", request);
-	setoptionof("Accept-Encoding", "", request);
-	setoptionof("Accept-Language", "", request);
-	setoptionof("Authorization", "", request);
-	setoptionof("Expect", "", request);
-	setoptionof("From", "", request);
-	setoptionof("Host", "", request);
-	setoptionof("If-Match", "", request);
-	setoptionof("If-Modified-Since", "", request);
-	setoptionof("If-None-Match", "", request);
-	setoptionof("If-Range", "", request);
-	setoptionof("If-Unmodified-Since", "", request);
-	setoptionof("Max-Forwards", "", request);
-	setoptionof("Proxy-Authorization", "", request);
-	setoptionof("Range", "", request);
-	setoptionof("Referer", "", request);
-	setoptionof("TE", "", request);
-	setoptionof("User-Agent", "", request);
+	setoptionof("Accept", "", request, in);
+	setoptionof("Accept-Charset", "", request, in);
+	setoptionof("Accept-Encoding", "", request, in);
+	setoptionof("Accept-Language", "", request, in);
+	setoptionof("Authorization", "", request, in);
+	setoptionof("Expect", "", request, in);
+	setoptionof("From", "", request, in);
+	setoptionof("Host", "", request, in);
+	setoptionof("If-Match", "", request, in);
+	setoptionof("If-Modified-Since", "", request, in);
+	setoptionof("If-None-Match", "", request, in);
+	setoptionof("If-Range", "", request, in);
+	setoptionof("If-Unmodified-Since", "", request, in);
+	setoptionof("Max-Forwards", "", request, in);
+	setoptionof("Proxy-Authorization", "", request, in);
+	setoptionof("Range", "", request, in);
+	setoptionof("Referer", "", request, in);
+	setoptionof("TE", "", request, in);
+	setoptionof("User-Agent", "", request, in);
 
 	/* response options */
-	setoptionof("Accept-Ranges", "", response);
-	setoptionof("Age", "", response);
-	setoptionof("ETag", "", response);
-	setoptionof("Location", "", response);
-	setoptionof("Proxy-Authenticate", "", response);
-	setoptionof("Retry-After", "", response);
-	setoptionof("Server", SERVER_ID, response);
-	setoptionof("Vary", "", response);
-	setoptionof("WWW-Authenticate", "", response);
+	setoptionof("Accept-Ranges", "", response, out);
+	setoptionof("Age", "", response, out);
+	setoptionof("ETag", "", response, out);
+	setoptionof("Location", "", response, out);
+	setoptionof("Proxy-Authenticate", "", response, out);
+	setoptionof("Retry-After", "", response, out);
+	setoptionof("Server", SERVER_ID, response, out);
+	setoptionof("Vary", "", response, out);
+	setoptionof("WWW-Authenticate", "", response, out);
 
-	optionver = 1;
+	currentver = 1;
 }
 
 static int optioncmp(const void *a, const void *b)
@@ -76,7 +87,7 @@ static int optioncmp(const void *a, const void *b)
 	return strcasecmp(((const struct option *) a)->key, ((const struct option *) b)->key);
 }
 
-void setoptionof(const char *key, const char *value, enum option_type type)
+void setoptionof(const char *key, const char *value, enum option_type type, enum option_inout inout)
 {
 	struct option *p;
 	static struct option *saved_for_later = NULL;
@@ -91,10 +102,11 @@ void setoptionof(const char *key, const char *value, enum option_type type)
 	struct option **q = (struct option **) tsearch(p, &options, optioncmp);
 	if (*q == p) {
 		p->type = type;
-		p->ver = optionver;
+		p->ver = currentver;
 		p->key = strdup(key);
 		p->value = strdup(value);
 		p->vsize = nvsize;
+		p->inout = inout;
 	} else {
 		saved_for_later = p;
 		p = *q;
@@ -102,21 +114,17 @@ void setoptionof(const char *key, const char *value, enum option_type type)
 			fprintf(stderr, "dangerously changing option type (%s):\n\tfrom: %d\n\tto: %d\n", p->key, p->type, type);
 			p->type = type;
 		}
-		if (p->ver == optionver)
+		if (p->ver == currentver)
 			fprintf(stderr, "overwriting option value (%s):\n\tfrom: %s\n\tto: %s\n", p->key, p->value, value);
 		else
-			p->ver = optionver;
+			p->ver = currentver;
 		if (p->vsize < nvsize) {
 			p->value = realloc(p->value, nvsize);
 			p->vsize = nvsize;
 		}
+		p->inout = inout;
 		strcpy(p->value, value);
 	}
-}
-
-void setoption(const char *key, const char *value)
-{
-	setoptionof(key, value, unknown);
 }
 
 char * getoption(const char *key)
@@ -127,7 +135,7 @@ char * getoption(const char *key)
 		return NULL;
 
 	struct option *p = *q;
-	if (p->ver != optionver)
+	if (p->ver != currentver)
 		return NULL;
 
 	return p->value;
@@ -141,8 +149,53 @@ char * getoptionof(const char *key, enum option_type type)
 		return NULL;
 
 	struct option *p = *q;
-	if (p->ver != optionver || p->type != type)
+	if (p->ver != currentver || p->type != type)
 		return NULL;
 
 	return p->value;
+}
+
+void touchoption(const char *key)
+{
+	struct option o = {.key = key};
+	struct option **q = (struct option **) tfind(&o, &options, optioncmp);
+	if (q == NULL)
+		fprintf(stderr, "could not touch option %s\n", key);
+
+	(*q)->ver = currentver;
+	(*q)->inout = out;
+}
+
+void spewoutputoptions()
+{
+	void _spewoutputoptions(const void *node, const VISIT which, const int depth)
+	{
+		const struct option *p = (const struct option *) node;
+		if ((which == postorder || which == leaf) && p->ver == currentver && p->type == response && p->inout == out)
+			printf("%s:%s\r\n", p->key, p->value);
+	}
+
+	twalk(options, _spewoutputoptions);
+	printf("\r\n");
+}
+
+
+ssize_t rebuildinputoptions(char **out, ssize_t *osize)
+{
+	char *o = *out;
+	void _rebuildinputoptions(const void *node, const VISIT which, const int depth)
+	{
+		const struct option *p = (const struct option *) node;
+		if ((which == postorder || which == leaf) && p->ver == currentver && p->inout == in) {
+			ssize_t thisopsize = strlen(p->key) + 1 + p->vsize + 2 + 1;
+			ssize_t olen = o - *out;
+			if (*osize < olen + thisopsize) {
+				*out = realloc(*out, *osize += thisopsize);
+				o = *out + olen;
+			}
+			o += sprintf(o, "%s:%s\r\n", p->key, p->value);
+		}
+	}
+	twalk(options, _rebuildinputoptions);
+	return o - *out;
 }

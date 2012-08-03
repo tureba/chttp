@@ -1,5 +1,5 @@
 [Unit]
-Description=HTTP server made for PostgreSQL
+Description=A Cimple HTTP server
 
 [Socket]
 ListenStream=80
