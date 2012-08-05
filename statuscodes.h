@@ -9,7 +9,7 @@ const char *response_texts[5][32] =
 /* 102 */ "Processing",	/* RFC 2518 */
 		},
 		{
-/* 200 */ "Ok",
+/* 200 */ "OK",
 /* 201 */ "Created",
 /* 202 */ "Accepted",
 /* 203 */ "Non-authoritive information",

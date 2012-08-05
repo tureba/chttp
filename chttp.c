@@ -9,10 +9,11 @@
 #include "config.h"
 #include "statuscodes.h"
 #include "option.h"
+#include "magic.h"
 
 char method[METHOD_SIZE + 1];
 char addr[ADDR_SIZE + 1];
-int httpver[2];
+unsigned int httpver[2];
 
 int main(void)
 {
@@ -85,10 +86,9 @@ int main(void)
 						/* passthrough to Bad Request */;
 
 				case -1: /* EOF */
-					/* expected \r\n */
-					response = 400; /* Bad Request */
+					/* expected \r\n, but nevermind */
 					terminate = 1;
-					goto respond;
+					goto break2;
 
 				case 2:
 				default:
@@ -107,7 +107,7 @@ break2:
 		{
 			ssize_t content_len = atoi(getoption("Content-Length"));
 			while (content_len > 0) {
-				/* maybe use some ther general-purpose buffer? */
+				/* maybe use some other general-purpose buffer? */
 				ssize_t n = read(0, value, (content_len <= VALUE_SIZE) ? content_len : VALUE_SIZE);
 				if (n == -1) /* EOF, no more content, in spite of Content-Length */
 					return;
@@ -118,6 +118,7 @@ break2:
 		if (!strcasecmp(method, "OPTIONS")) {
 			response = 200; /* OK */
 			discard_input_content();
+			setoutoption("Accept","*");
 			setoutoption("Content-Length", "0"); /* force this */
 		} else if (!strcasecmp(method, "TRACE")) {
 			response = 200; /* OK */
@@ -164,6 +165,7 @@ respond:
 
 		/* header options */
 		spewoutputoptions();
+		fflush(stdout);
 
 		ssize_t content_length = atoi(getoption("Content-Length"));
 		if (content_length > 0)
