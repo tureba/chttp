@@ -118,7 +118,7 @@ break2:
 		if (!strcasecmp(method, "OPTIONS")) {
 			response = 200; /* OK */
 			discard_input_content();
-			setoutoption("Accept","*");
+			setoutoption("Accept","*/*");
 			setoutoption("Content-Length", "0"); /* force this */
 		} else if (!strcasecmp(method, "TRACE")) {
 			response = 200; /* OK */

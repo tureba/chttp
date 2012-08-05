@@ -8,7 +8,5 @@ accepts, like xinetd used to do.
 The memory management is simple: only deallocate
 when low on memory and on exit. (TODO: garbage collector.)
 
-Automatic tests will come soon.
-
 I was bored, so I started this. Let's see how far
 I get until I lose interest. -Tureba

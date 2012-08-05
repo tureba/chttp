@@ -7,7 +7,7 @@ check: ../chttp $(TESTS)
 
 $(TESTS):
 	@echo testing $*
-	-cat $*.in | ../chttp &>$@
+	-../chttp <$*.in &>$@
 	-diff -i -B --suppress-common-lines -y $*.out $@
 
 .PHONY: clean
